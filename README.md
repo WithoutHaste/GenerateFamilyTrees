@@ -4,6 +4,10 @@ Tool for auto-generating a few interconnected family trees, for fiction writing.
 
 This is a story-building device, so it's loose on the details.
 
+# Sample Output
+
+![Sample Output](images/output_sample_01.png)
+
 # How To
 
 Download the HTML file to your computer and open it in your browser to run the tool yourself.
