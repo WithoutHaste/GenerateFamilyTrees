@@ -52,8 +52,8 @@
 const percentChildCount = [12,20,30,18,8,4,2,1,1,1,1,1,1]; //percent who have 0-kids, then 1-kid, then 2-kids, etc
 const percentDeathAge = [2,2,4,8,15,15,30,20,4]; //percent who died at age 0-10, then age 10-20, then age 20-30, etc
 const minimumAgeToHaveChildren = 18;
-const percentFirstChildAge = [50,30,15,5]; //percent who started having children at age min-(min+10), then min-(min+20), etc
-	// ?differentiate for seed vs egg?
+const percentFirstChildAge = [50,30,15,5]; //percent who started having children at age 18-27, then 28-37, etc
+const percentYearsBetweenChildren = [75,20,5]; //percent where years between two children is 0-4 years, then 5-9 years, etc
 const percentNonbinary = 2;
 //const percentMarrySameGender = 20;
 //const percentDivorce = 20;
@@ -176,7 +176,7 @@ function displayTree(tree) {
 		
 		if(person.children.length > 0 && person != tree.rootPerson) {
 			var eleCollapse = document.createElement('button');
-			eleCollapse.innerHTML = '^';
+			eleCollapse.innerHTML = '⌃'; /*up caret*/
 			eleCollapse.dataset.isCollapsed = false;
 			eleCollapse.dataset.targetId = eleChildren.id;
 			eleCollapse.addEventListener('click', clickPersonCollapse);
@@ -203,12 +203,12 @@ function clickPersonCollapse(event) {
 	const button = event.target;
 	const target = document.getElementById(button.dataset.targetId);
 	if(button.dataset.isCollapsed == 'true') {
-		button.innerHTML = '^';
+		button.innerHTML = '⌃'; /*up caret*/
 		button.dataset.isCollapsed = false;
 		target.style.display = 'inline-block';
 	}
 	else {
-		button.innerHTML = 'V';
+		button.innerHTML = '⌄'; /*down caret*/
 		button.dataset.isCollapsed = true;
 		target.style.display = 'none';
 	}	
@@ -273,7 +273,8 @@ function personGenerateChildren(person, personIndex) {
 		personIndex++;
 		personIndex = personGenerateChildren(newChild, personIndex);
 		person.children.push(newChild);
-		age += Math.floor(Math.random()*5); //by allowing 0 years to elapse, you get twins
+		var yearsBetweenChilden = getRandomYearsBetweenChildren(); //by allowing 0 years to elapse, you get twins
+		age += yearsBetweenChilden; 
 		if(age > person.deathAge) {
 			break;
 		}
@@ -322,6 +323,12 @@ function getRandomStartedHavingChildrenAge() {
 	const startedDecade = ((getRandomIndex_Distribution(percentFirstChildAge) + 1) * 10) + minimumAgeToHaveChildren;
 	const r = Math.floor(Math.random()*10);
 	return startedDecade - r;
+}
+
+function getRandomYearsBetweenChildren() {
+	const rangeMin = getRandomIndex_Distribution(percentYearsBetweenChildren) * 5;
+	const r = Math.floor(Math.random()*5);
+	return rangeMin + r;
 }
 
 function getRandomElement(array) {
