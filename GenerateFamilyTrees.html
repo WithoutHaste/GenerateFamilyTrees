@@ -153,7 +153,7 @@ function displayTree(tree) {
 		var eleMisc = document.createElement('div');
 		eleMisc.innerHTML = '(' + person.gender + ') (' + person.deathAge + 'y)';
 		if(person.birthYear > yearEnd) {
-			eleYears.innerHTML = person.birthYear + ' - ?';
+			eleYears.innerHTML = person.birthYear + '-?';
 			eleMisc.innerHTML = '(' + person.gender + ')';
 		}
 
