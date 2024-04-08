@@ -29,7 +29,7 @@
 		</style>
     </head>
     <body>
-        <h3>Generate Family Trees</h3>
+        <h3>Generate Family Trees <button id='button-expand-all'>Expand All</button></h3>
 		<table style='width:100%;'>
 			<tr>
 				<!-- all styling applied here because can't use # in style section -->
@@ -67,7 +67,14 @@ const percentNameCharacters = [ 6 , 6 , 5 , 6 , 6 , 5 , 5 , 6 , 2 , 3 , 4 , 4 , 
 
 var trees = [];
 
-window.addEventListener('load', generateTrees);
+window.addEventListener('load', init);
+
+function init() {
+	const buttonExpandAll = document.getElementById('button-expand-all');
+	buttonExpandAll.addEventListener('click', clickExpandAll);
+
+	generateTrees();
+}
 
 function generateTrees() {
 	if(yearEnd <= yearStart) {
@@ -150,6 +157,7 @@ function displayTree(tree) {
 		eleInfo.style.marginRight = '4px';
 		var eleChildren = document.createElement('div');
 		eleChildren.style.display = 'inline-block';
+		eleChildren.id = person.getName(); //name should be unique for each set of generated trees
 	
 		var eleName = document.createElement('div');
 		eleName.innerHTML = person.getName();
@@ -161,10 +169,20 @@ function displayTree(tree) {
 			eleYears.innerHTML = person.birthYear + '-?';
 			eleMisc.innerHTML = '(' + person.gender + ')';
 		}
-
+		
 		eleInfo.appendChild(eleName);
 		eleInfo.appendChild(eleYears);
 		eleInfo.appendChild(eleMisc);
+		
+		if(person.children.length > 0 && person != tree.rootPerson) {
+			var eleCollapse = document.createElement('button');
+			eleCollapse.innerHTML = '^';
+			eleCollapse.dataset.isCollapsed = false;
+			eleCollapse.dataset.targetId = eleChildren.id;
+			eleCollapse.addEventListener('click', clickPersonCollapse);
+			eleInfo.appendChild(document.createElement('br'));
+			eleInfo.appendChild(eleCollapse);
+		}
 
 		for(child of person.children) {
 			var eleChild = buildPersonDiv(child);
@@ -179,6 +197,30 @@ function displayTree(tree) {
 		return elePerson;
 	}
 	
+}
+
+function clickPersonCollapse(event) {
+	const button = event.target;
+	const target = document.getElementById(button.dataset.targetId);
+	if(button.dataset.isCollapsed == 'true') {
+		button.innerHTML = '^';
+		button.dataset.isCollapsed = false;
+		target.style.display = 'inline-block';
+	}
+	else {
+		button.innerHTML = 'V';
+		button.dataset.isCollapsed = true;
+		target.style.display = 'none';
+	}	
+}
+
+function clickExpandAll(event) {
+	const buttons = document.getElementsByTagName('button');
+	for(var button of buttons) {
+		if(button.dataset.isCollapsed == 'true') {
+			button.click();
+		}
+	}
 }
 
 function newTree(treeIndex) {
