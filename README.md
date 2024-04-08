@@ -17,3 +17,11 @@ A new set of trees is generated each time the page loads.
 Tool configuration can be edited at the top of the javascript section of the file.
 
 There is a button for downloading a tree as a stand-alone HTML file. The file name is `{tree-name}_{YYYYMMDD}_{HHMMSS}.html`.
+
+Key:
+- (F) = Female
+- (M) = Male
+- (NB) = Non Binary
+- *digits*y = lived for *digits* years
+- m. *name* = married to *name*
+  - if the "last name" portion includes "??" then that person is not shown in any of the trees on the page
