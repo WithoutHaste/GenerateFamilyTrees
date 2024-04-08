@@ -4,7 +4,8 @@
         <meta http-equiv="content-type" content="text/html; charset=utf-8">
         <meta name="author" content="Without Haste">
         <title>Generate Family Trees</title>
-		<style type="text/css">
+		<style type="text/css" id='styles'>
+			/* using any "hashtag" symbol here breaks the download feature */
 			body {
 				font-size: 14px;
 				font-family: courier;
@@ -12,12 +13,7 @@
 			td {
 				vertical-align: top;
 			}
-			#tabs-container {
-				border: 1px solid #666;
-				background-color: #ddd;
-				padding: 8px;
-			}
-			input[type=radio], label.clickable {
+			input[type=radio], label.clickable, button {
 				cursor: pointer;
 			}
 			div {
@@ -36,7 +32,8 @@
         <h3>Generate Family Trees</h3>
 		<table style='width:100%;'>
 			<tr>
-				<td style='white-space:nowrap;' id='tabs-container'>
+				<!-- all styling applied here because can't use # in style section -->
+				<td style='white-space:nowrap;border:1px solid #666;background-color:#ddd;padding:8px;' id='tabs-container'>
 					tabs here
 				</td>
 				<td style='width:100%'>
@@ -115,6 +112,13 @@ function displayTrees() {
 	}
 	firstOption.checked = true;
 
+	tabsContainer.appendChild(document.createElement('br'));
+	tabsContainer.appendChild(document.createElement('br'));
+	var buttonDownload = document.createElement('button');
+	buttonDownload.innerHTML = 'Download Current Tree<br/>As HTML File';
+	buttonDownload.addEventListener('click', downloadCurrentTreeAsHTML);
+	tabsContainer.appendChild(buttonDownload);
+
 	displayTree(trees[0]);
 }
 
@@ -135,6 +139,7 @@ function changeTab(event) {
 function displayTree(tree) {
 	const container = document.getElementById('tree-container');
 	container.innerHTML = "";
+	container.dataset.name = tree.getName();
 
 	var div = buildPersonDiv(tree.rootPerson);
 	container.appendChild(div);
@@ -234,6 +239,20 @@ function personGenerateChildren(person, personIndex) {
 	return personIndex;
 }
 
+function downloadCurrentTreeAsHTML() {
+	const treeContainer = document.getElementById('tree-container');
+	var textStyles = document.getElementById('styles').outerHTML;
+	var textTree = treeContainer.outerHTML;
+	var hiddenElement = document.createElement('a');
+	hiddenElement.href = 'data:attachment/text,' + encodeURI('<html><head>'+textStyles+'</head><body>'+textTree+'</body></html>');
+	hiddenElement.target = '_blank';
+	var treeName = treeContainer.dataset.name;
+	var datetimestamp = getDateTime_YYYYMMDD_HHMMSS();
+	var filename = treeName+'_'+datetimestamp+'.html';
+	hiddenElement.download = filename;
+	hiddenElement.click();	
+}
+
 function getRandomCharacter() {
 	const index = getRandomIndex_Distribution(percentNameCharacters);
 	return nameCharacters[index];
@@ -277,6 +296,12 @@ function getRandomIndex_Distribution(distributionArray) {
 		}
 	}
 	return distributionArray.length;
+}
+
+function getDateTime_YYYYMMDD_HHMMSS() {
+	var date = new Date();
+
+	return date.getFullYear() + ("0" + (date.getMonth() + 1)).slice(-2) + ("0" + date.getDate()).slice(-2) + '_' + ("0" + date.getHours() ).slice(-2) + ("0" + date.getMinutes()).slice(-2) + ("0" + date.getSeconds()).slice(-2);
 }
 
 </script>
