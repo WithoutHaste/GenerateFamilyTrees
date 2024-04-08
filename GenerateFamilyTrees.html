@@ -20,13 +20,14 @@
 			input[type=radio], label.clickable {
 				cursor: pointer;
 			}
+			div {
+				vertical-align: top;
+				text-align: left;
+			}
 			div.person {
-				display: inline-block;
 				border: 1px solid black;
 				padding: 0.5em;
-				margin-right: 3px;
-				text-align: center;
-				vertical-align: top;
+				margin-bottom: 3px;
 				white-space: nowrap;
 			}
 		</style>
@@ -139,21 +140,37 @@ function displayTree(tree) {
 	container.appendChild(div);
 	
 	function buildPersonDiv(person) {
+		var eleInfo = document.createElement('div');
+		eleInfo.style.display = 'inline-block';
+		eleInfo.style.marginRight = '4px';
+		var eleChildren = document.createElement('div');
+		eleChildren.style.display = 'inline-block';
+	
 		var eleName = document.createElement('div');
-		eleName.innerHTML = person.getName() + ' (' + person.gender + ')';
+		eleName.innerHTML = person.getName();
 		var eleYears = document.createElement('div');
-		eleYears.innerHTML = person.birthYear + '-' + person.deathYear + '(' + person.deathAge + 'y)';
+		eleYears.innerHTML = person.birthYear + '-' + person.deathYear;
+		var eleMisc = document.createElement('div');
+		eleMisc.innerHTML = '(' + person.gender + ') (' + person.deathAge + 'y)';
 		if(person.birthYear > yearEnd) {
 			eleYears.innerHTML = person.birthYear + ' - ?';
+			eleMisc.innerHTML = '(' + person.gender + ')';
 		}
-		var elePerson = document.createElement('div');
-		elePerson.classList.add('person');
-		elePerson.appendChild(eleName);
-		elePerson.appendChild(eleYears);
+
+		eleInfo.appendChild(eleName);
+		eleInfo.appendChild(eleYears);
+		eleInfo.appendChild(eleMisc);
+
 		for(child of person.children) {
 			var eleChild = buildPersonDiv(child);
-			elePerson.appendChild(eleChild);
+			eleChildren.appendChild(eleChild);
 		}
+		
+		var elePerson = document.createElement('div');
+		elePerson.classList.add('person');
+		elePerson.appendChild(eleInfo);
+		elePerson.appendChild(eleChildren);
+		
 		return elePerson;
 	}
 	
