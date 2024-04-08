@@ -10,13 +10,13 @@ This is a story-building device, so it's loose on the details.
 
 # How To
 
-Download the HTML file to your computer and open it in your browser to run the tool yourself.
+Download the HTML file to your computer and open it in your browser to run the tool yourself. 
 
 A new set of trees is generated each time the page loads.
 
 Tool configuration can be edited at the top of the javascript section of the file.
 
-There is a button for downloading a tree as a stand-alone HTML file. The file name is `{tree-name}_{YYYYMMDD}_{HHMMSS}.html`.
+There is a button for downloading (exporting) a tree as a stand-alone HTML file. The file name is `{tree-name}_{YYYYMMDD}_{HHMMSS}.html`. Interactivity will not work on the downloaded version, so make sure to hit "Expand All" before downloading.
 
 Key:
 - (F) = Female

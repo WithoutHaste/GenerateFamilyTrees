@@ -86,6 +86,9 @@ function generateTrees() {
 	trees = [];
 	for(var i=0; i<countTrees; i++) {
 		trees[i] = newTree(i+1);
+		while(trees[i].countGenerations() < 3) {
+			trees[i] = newTree(i+1);
+		}
 	}
 	
 	displayTrees();
@@ -237,6 +240,9 @@ function newTree(treeIndex) {
 		getName: function() {
 			return this.familyCharacter + this.familyIndex;
 		},
+		countGenerations: function() {
+			return this.rootPerson.countGenerations();
+		}
 	};
 	const r = Math.floor(Math.random()*20);
 	tree.rootPerson = newPerson(1, tree.getName(), r + yearStart);
@@ -258,6 +264,16 @@ function newPerson(personIndex, familyName, birthYear) {
 		},
 		getName: function() {
 			return this.getFirstName() + ' ' + this.familyName;
+		},
+		countGenerations: function() {
+			var generations = 0;
+			for(var child of this.children) {
+				var childGenerations = child.countGenerations();
+				if(childGenerations > generations) {
+					generations = childGenerations;
+				}
+			}
+			return generations + 1;
 		},
 	};
 	person.deathYear = person.birthYear + person.deathAge;
