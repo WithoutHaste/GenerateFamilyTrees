@@ -1,0 +1,265 @@
+<!DOCTYPE HTML>
+<html lang="en">
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+        <meta name="author" content="Without Haste">
+        <title>Generate Family Trees</title>
+		<style type="text/css">
+			body {
+				font-size: 14px;
+				font-family: courier;
+			}
+			td {
+				vertical-align: top;
+			}
+			#tabs-container {
+				border: 1px solid #666;
+				background-color: #ddd;
+				padding: 8px;
+			}
+			input[type=radio], label.clickable {
+				cursor: pointer;
+			}
+			div.person {
+				display: inline-block;
+				border: 1px solid black;
+				padding: 0.5em;
+				margin-right: 3px;
+				text-align: center;
+				vertical-align: top;
+				white-space: nowrap;
+			}
+		</style>
+    </head>
+    <body>
+        <h3>Generate Family Trees</h3>
+		<table style='width:100%;'>
+			<tr>
+				<td style='white-space:nowrap;' id='tabs-container'>
+					tabs here
+				</td>
+				<td style='width:100%'>
+					<div id='tree-container'>
+					</div>
+				</td>
+			</tr>
+		</table>
+    </body>
+</html>
+
+<script type='text/javascript'>
+
+//CONFIGURATION SECTION
+// percent fields: value "60" means "60%"
+const percentChildCount = [12,20,30,18,8,4,2,1,1,1,1,1,1]; //percent who have 0-kids, then 1-kid, then 2-kids, etc
+const percentDeathAge = [2,2,4,8,15,15,30,20,4]; //percent who died at age 0-10, then age 10-20, then age 20-30, etc
+const minimumAgeToHaveChildren = 18;
+const percentFirstChildAge = [50,30,15,5]; //percent who started having children at age min-(min+10), then min-(min+20), etc
+	// ?differentiate for seed vs egg?
+const percentNonbinary = 2;
+//const percentMarrySameGender = 20;
+//const percentDivorce = 20;
+//const percentRemarry = 50; //remarriage after divorce or death
+const yearStart = 1900;
+const yearEnd = 2050; //people born after this year will stop generating children
+const countTrees = 10; //number of trees to create; they will interconnect
+const percentInterconnect = 10;
+const nameCharacters =        ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
+const percentNameCharacters = [ 6 , 6 , 5 , 6 , 6 , 5 , 5 , 6 , 2 , 3 , 4 , 4 , 6 , 4 , 3 , 3 , 1 , 4 , 6 , 6 , 2 , 1 , 3 , 1 , 1 , 1 ]; //how common each character is
+
+var trees = [];
+
+window.addEventListener('load', generateTrees);
+
+function generateTrees() {
+	if(yearEnd <= yearStart) {
+		console.log("FATAL ERROR: yearEnd must be later than yearStart");
+		return;
+	}
+
+	trees = [];
+	for(var i=0; i<countTrees; i++) {
+		trees[i] = newTree(i+1);
+	}
+	
+	displayTrees();
+}
+
+function displayTrees() {
+	const tabsContainer = document.getElementById('tabs-container');
+	tabsContainer.innerHTML = "";
+	var eleTitle = document.createElement('label');
+	eleTitle.innerHTML = 'Trees/Families';
+	tabsContainer.appendChild(eleTitle);
+	tabsContainer.appendChild(document.createElement('br'));
+	
+	var firstOption = null;
+	for(var tree of trees) {
+		var eleLabel = document.createElement('label');
+		eleLabel.classList.add('clickable');
+		var eleOption = document.createElement('input');
+		eleOption.type = 'radio';
+		eleOption.name = 'tab';
+		eleOption.value = tree.getName();
+		eleOption.addEventListener('change', changeTab);
+		eleLabel.appendChild(eleOption);
+		var eleText = document.createElement('span');
+		eleText.innerHTML = tree.getName();
+		eleLabel.appendChild(eleText);
+		tabsContainer.appendChild(eleLabel);
+		tabsContainer.appendChild(document.createElement('br'));
+		if(firstOption == null) {
+			firstOption = eleOption;
+		}
+	}
+	firstOption.checked = true;
+
+	displayTree(trees[0]);
+}
+
+function changeTab(event) {
+	const eleOption = event.target;
+	if(eleOption.selected == false) {
+		return;
+	}
+	
+	for(var tree of trees) {
+		if(tree.getName() == eleOption.value) {
+			displayTree(tree);
+			return;
+		}
+	}
+}
+
+function displayTree(tree) {
+	const container = document.getElementById('tree-container');
+	container.innerHTML = "";
+
+	var div = buildPersonDiv(tree.rootPerson);
+	container.appendChild(div);
+	
+	function buildPersonDiv(person) {
+		var eleName = document.createElement('div');
+		eleName.innerHTML = person.getName() + ' (' + person.gender + ')';
+		var eleYears = document.createElement('div');
+		eleYears.innerHTML = person.birthYear + '-' + person.deathYear + '(' + person.deathAge + 'y)';
+		if(person.birthYear > yearEnd) {
+			eleYears.innerHTML = person.birthYear + ' - ?';
+		}
+		var elePerson = document.createElement('div');
+		elePerson.classList.add('person');
+		elePerson.appendChild(eleName);
+		elePerson.appendChild(eleYears);
+		for(child of person.children) {
+			var eleChild = buildPersonDiv(child);
+			elePerson.appendChild(eleChild);
+		}
+		return elePerson;
+	}
+	
+}
+
+function newTree(treeIndex) {
+	var tree = {
+		familyCharacter: getRandomCharacter(), //give a differentiating letter to each family/tree, for legibility
+		familyIndex: treeIndex, //give a unique index to each family/tree
+		nextNameIndex: 1, //give a unique index to each member of the family
+		rootPerson: null, //first person in the family, as far as this tree goes
+		getName: function() {
+			return this.familyCharacter + this.familyIndex;
+		},
+	};
+	const r = Math.floor(Math.random()*20);
+	tree.rootPerson = newPerson(1, tree.getName(), r + yearStart);
+	personGenerateChildren(tree.rootPerson, tree.rootPerson.personIndex + 1);
+	return tree;
+}
+
+function newPerson(personIndex, familyName, birthYear) {
+	var person = {
+		personCharacter: getRandomCharacter(), //give a differentiating letter to each person, for legibility
+		personIndex: personIndex, //give a unique index to each member within a family
+		familyName: familyName, //unique last name of family/tree
+		gender: getRandomGender(),
+		children: [],
+		birthYear: birthYear,
+		deathAge: getRandomDeathAge(),
+		getFirstName: function() {
+			return this.personCharacter + this.personIndex;
+		},
+		getName: function() {
+			return this.getFirstName() + ' ' + this.familyName;
+		},
+	};
+	person.deathYear = person.birthYear + person.deathAge;
+	return person;
+}
+
+//personIndex: next person-index available in family/tree
+//returns the max person-index used
+function personGenerateChildren(person, personIndex) {
+	var childCount = getRandomChildCount();
+	var age = getRandomStartedHavingChildrenAge();
+	if(person.deathAge < age || person.birthYear > yearEnd) {
+		childCount = 0;
+	}
+	person.children = [];
+	for(var i=0; i<childCount; i++) {
+		var newChild = newPerson(personIndex, person.familyName, person.birthYear + age)
+		personIndex++;
+		personIndex = personGenerateChildren(newChild, personIndex);
+		person.children.push(newChild);
+		age += Math.floor(Math.random()*5); //by allowing 0 years to elapse, you get twins
+		if(age > person.deathAge) {
+			break;
+		}
+	}
+	return personIndex;
+}
+
+function getRandomCharacter() {
+	const index = getRandomIndex_Distribution(percentNameCharacters);
+	return nameCharacters[index];
+}
+
+function getRandomGender() {
+	const r = Math.random()*100;
+	if(r < percentNonbinary) {
+		return 'NB';
+	}
+	return getRandomElement(['F','M']);
+}
+
+function getRandomChildCount() {
+	return getRandomIndex_Distribution(percentChildCount);
+}
+
+function getRandomDeathAge() {
+	const deathDecade = (getRandomIndex_Distribution(percentDeathAge) + 1) * 10;
+	const r = Math.floor(Math.random()*10);
+	return deathDecade - r;
+}
+
+function getRandomStartedHavingChildrenAge() {
+	const startedDecade = ((getRandomIndex_Distribution(percentFirstChildAge) + 1) * 10) + minimumAgeToHaveChildren;
+	const r = Math.floor(Math.random()*10);
+	return startedDecade - r;
+}
+
+function getRandomElement(array) {
+	return array[Math.floor(Math.random()*array.length)];
+}
+
+function getRandomIndex_Distribution(distributionArray) {
+	const r = Math.floor(Math.random()*100);
+	var accumulator = 0;
+	for(var i=0; i<distributionArray.length; i++) {
+		accumulator += distributionArray[i];
+		if(accumulator >= r) {
+			return i;
+		}
+	}
+	return distributionArray.length;
+}
+
+</script>
