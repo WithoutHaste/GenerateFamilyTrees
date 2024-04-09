@@ -103,17 +103,29 @@ function generateTrees() {
 }
 
 function generateMarriages() {
+	//mark off who is not marrying
 	for(var tree of trees) {
 		for(var person of tree.flattenedPeople) {
-			//check if they aren't marrying at all
 			if(person.isEndNode()) {
+				person.notMarrying = true;
 				continue;
 			}
 			const rWillMarry = Math.random()*100;
 			if(person.children.length == 0 && percentWithoutChildrenMarry < rWillMarry) {
+				person.notMarrying = true;
 				continue;
 			}
 			else if(person.children.length > 0 && percentWithChildrenMarry < rWillMarry) {
+				person.notMarrying = true;
+				continue;
+			}
+		}
+	}
+
+	//find marriage partners
+	for(var tree of trees) {
+		for(var person of tree.flattenedPeople) {
+			if(person.notMarrying) {
 				continue;
 			}
 			//check if they are marrying outside the trees
@@ -123,18 +135,10 @@ function generateMarriages() {
 				continue;
 			}
 			//who is marriageable inside the trees?
-			const lookingForSameGender = (percentMarrySameGender < Math.random()*100);
-			var lookingForGenders = [];
-			switch(person.gender) {
-				case 'F': lookingForGenders = (lookingForSameGender) ? ['NB', 'F'] : ['NB', 'M']; break;
-				case 'M': lookingForGenders = (lookingForSameGender) ? ['NB', 'M'] : ['NB', 'F']; break;
-				case 'NB': lookingForGenders = ['NB', 'F', 'M']; break;
-				default: console.log('unknown gender: ' + person.gender); break;
-			}
 			var possibleSpouses = [];
 			for(var treeMarry of trees) {
 				for(var personMarry of treeMarry.flattenedPeople) {
-					if(!person.couldGetMarried(personMarry, lookingForGenders))
+					if(!person.couldGetMarried(personMarry))
 						continue;
 					possibleSpouses.push(personMarry);
 				}
@@ -355,7 +359,9 @@ function newPerson(personIndex, familyName, birthYear) {
 		gender: getRandomGender(),
 		birthYear: birthYear,
 		deathAge: getRandomDeathAge(),
+		notMarrying: false,
 		children: [],
+		lookingForGenders: [], //list of genders this person is open to marrying
 		spouses: [], //just their names
 		getFirstName: function() {
 			return this.personCharacter + this.personIndex;
@@ -373,17 +379,20 @@ function newPerson(personIndex, familyName, birthYear) {
 			}
 			return flattened;
 		},
-		couldGetMarried: function(otherPerson, lookingForGenders) {
+		couldGetMarried: function(otherPerson) {
 			//can't marry yourself
 			if(this.getName() == otherPerson.getName()) {
 				return false;
 			}
-			//endNodes don't marry
-			if(this.isEndNode() || otherPerson.isEndNode()) {
+			//not interested in marriage
+			if(this.notMarrying || otherPerson.notMarrying) {
 				return false;
 			}
 			//is the gender ok?
-			if(!lookingForGenders.includes(otherPerson.gender)) {
+			if(!this.lookingForGenders.includes(otherPerson.gender)) {
+				return false;
+			}
+			if(!otherPerson.lookingForGenders.includes(this.gender)) {
 				return false;
 			}
 			//verify your adult+living years overlap theirs
@@ -414,6 +423,15 @@ function newPerson(personIndex, familyName, birthYear) {
 		},
 	};
 	person.deathYear = person.birthYear + person.deathAge;
+
+	const lookingForSameGender = (percentMarrySameGender > Math.random()*100);
+	switch(person.gender) {
+		case 'F': person.lookingForGenders = (lookingForSameGender) ? ['NB', 'F'] : ['NB', 'M']; break;
+		case 'M': person.lookingForGenders = (lookingForSameGender) ? ['NB', 'M'] : ['NB', 'F']; break;
+		case 'NB': person.lookingForGenders = ['NB', 'F', 'M']; break;
+		default: console.log('unknown gender: ' + person.gender); break;
+	}
+
 	return person;
 }
 
