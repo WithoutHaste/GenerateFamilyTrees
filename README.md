@@ -22,6 +22,6 @@ Key:
 - (F) = Female
 - (M) = Male
 - (NB) = Non Binary
-- *digits*y = lived for *digits* years
+- *99*y = lived for *99* years
 - m. *name* = married to *name*
   - if the "last name" portion includes "??" then that person is not shown in any of the trees on the page

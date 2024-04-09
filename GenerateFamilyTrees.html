@@ -49,19 +49,22 @@
 
 //CONFIGURATION SECTION
 // percent fields: value "60" means "60%"
+const minNumberOfGenerations = 3; //each tree must be at least this many generations deep
 const percentChildCount = [15,17,30,18,8,4,2,1,1,1,1,1,1]; //percent who have 0-kids, then 1-kid, then 2-kids, etc
 const percentDeathAge = [2,2,4,8,15,15,30,20,4]; //percent who died at age 0-10, then age 10-20, then age 20-30, etc
 const minimumAgeToHaveChildren = 18;
 const percentFirstChildAge = [50,30,15,5]; //percent who started having children at age 18-27, then 28-37, etc
 const percentYearsBetweenChildren = [75,20,5]; //percent where years between two children is 0-4 years, then 5-9 years, etc
 const percentNonbinary = 2;
-const percentTreesInterconnect = 10; //percent of marriages that occur between these trees
+const percentTreesInterconnect = 20; //percent of marriages that occur between these trees
+const percentWithChildrenMarry = 80;
+const percentWithoutChildrenMarry = 50;
 const percentMarrySameGender = 20;
 const minSeparationForMarriage = 2; //minimum number of generations back to a shared relative between people getting married
 //const percentDivorce = 20;
 //const percentRemarry = 50; //remarriage after divorce or death
 const yearStart = 1900;
-const yearEnd = 2050; //people born after this year will stop generating children
+const yearEnd = 2020; //people born after this year will stop generating children
 const countTrees = 10; //number of trees to create; they will interconnect
 const nameCharacters =        ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
 const percentNameCharacters = [ 6 , 6 , 5 , 6 , 6 , 5 , 5 , 6 , 2 , 3 , 4 , 4 , 6 , 4 , 3 , 3 , 1 , 4 , 6 , 6 , 2 , 1 , 3 , 1 , 1 , 1 ]; //how common each character is
@@ -71,6 +74,11 @@ var trees = [];
 window.addEventListener('load', init);
 
 function init() {
+	if(yearEnd <= yearStart) {
+		console.log("FATAL ERROR: yearEnd must be later than yearStart");
+		return;
+	}
+
 	const buttonExpandAll = document.getElementById('button-expand-all');
 	buttonExpandAll.addEventListener('click', clickExpandAll);
 
@@ -78,20 +86,100 @@ function init() {
 }
 
 function generateTrees() {
-	if(yearEnd <= yearStart) {
-		console.log("FATAL ERROR: yearEnd must be later than yearStart");
-		return;
-	}
-
 	trees = [];
 	for(var i=0; i<countTrees; i++) {
 		trees[i] = newTree(i+1);
-		while(trees[i].countGenerations() < 3) {
+		//it could be impossible to get the requested depth within the yearStart/End constraints
+		var countAttemps = 0;
+		while(trees[i].countGenerations() < minNumberOfGenerations && countAttemps < 5) {
 			trees[i] = newTree(i+1);
+			countAttemps++;
 		}
 	}
 	
+	generateMarriages();
+	
 	displayTrees();
+}
+
+function generateMarriages() {
+	for(var tree of trees) {
+		for(var person of tree.flattenedPeople) {
+			//check if they aren't marrying at all
+			if(person.isEndNode()) {
+				continue;
+			}
+			const rWillMarry = Math.random()*100;
+			if(person.children.length == 0 && percentWithoutChildrenMarry < rWillMarry) {
+				continue;
+			}
+			else if(person.children.length > 0 && percentWithChildrenMarry < rWillMarry) {
+				continue;
+			}
+			//check if they are marrying outside the trees
+			const rInterconnect = Math.random()*100;
+			if(percentTreesInterconnect < rInterconnect) {
+				person.spouses.push(getOutsideName());
+				continue;
+			}
+			//who is marriageable inside the trees?
+			const lookingForSameGender = (percentMarrySameGender < Math.random()*100);
+			var lookingForGenders = [];
+			switch(person.gender) {
+				case 'F': lookingForGenders = (lookingForSameGender) ? ['NB', 'F'] : ['NB', 'M']; break;
+				case 'M': lookingForGenders = (lookingForSameGender) ? ['NB', 'M'] : ['NB', 'F']; break;
+				case 'NB': lookingForGenders = ['NB', 'F', 'M']; break;
+				default: console.log('unknown gender: ' + person.gender); break;
+			}
+			var possibleSpouses = [];
+			for(var treeMarry of trees) {
+				for(var personMarry of treeMarry.flattenedPeople) {
+					if(!person.couldGetMarried(personMarry, lookingForGenders))
+						continue;
+					possibleSpouses.push(personMarry);
+				}
+			}
+			if(possibleSpouses.length == 0) {
+				person.spouses.push(getOutsideName());
+				continue;
+			}
+			//marry them
+			var spouse = selectSpouse(person, possibleSpouses);
+			marryPeople(person, spouse);
+		}
+	}
+	
+	//ASSUMES possibleSpouses is not empty
+	function selectSpouse(person, possibleSpouses) {
+		//first priority to people in other trees
+		//then priority to people close in age
+		var possibleSpouses_OtherTrees = possibleSpouses.filter((x) => x.familyName != person.familyName);
+		if(possibleSpouses_OtherTrees.length > 0) {
+			possibleSpouses_OtherTrees.sort(compareAgeDiffAscending);
+			return getRandomElement(possibleSpouses_OtherTrees.splice(0, Math.ceil(possibleSpouses_OtherTrees.length/2)));
+		}
+		else {
+			possibleSpouses.sort(compareAgeDiffAscending);
+			return getRandomElement(possibleSpouses.splice(0, Math.ceil(possibleSpouses.length/2)));
+		}
+		
+		function compareAgeDiffAscending(spouseA, spouseB) {
+			var ageDiffA = Math.abs(person.birthYear - spouseA.birthYear);
+			var ageDiffB = Math.abs(person.birthYear - spouseB.birthYear);
+			if(ageDiffA < ageDiffB) return -1;
+			if(ageDiffB < ageDiffA) return 1;
+			return 0;
+		}
+	}
+	
+	function marryPeople(personA, personB) {
+		personA.spouses.push(personB.getName());
+		personB.spouses.push(personA.getName());			
+	}
+	
+	function getOutsideName() {
+		return getRandomCharacter()+'?? '+getRandomCharacter()+'??';
+	}
 }
 
 function displayTrees() {
@@ -171,14 +259,21 @@ function displayTree(tree) {
 		eleYears.innerHTML = person.birthYear + '-' + person.deathYear + ' (' + person.deathAge + 'y)';
 		//var eleMisc = document.createElement('div');
 		//eleMisc.innerHTML = '(' + person.deathAge + 'y)';
-		if(person.birthYear > yearEnd) {
+		if(person.isEndNode()) {
 			eleYears.innerHTML = person.birthYear + '-?';
 			//eleMisc.innerHTML = '';
+		}
+		var eleMarriages = document.createElement('div');
+		for(var spouse of person.spouses) {
+			var eleMarriage = document.createElement('div');
+			eleMarriage.innerHTML = 'm. '+spouse;
+			eleMarriages.appendChild(eleMarriage);
 		}
 		
 		eleInfo.appendChild(eleName);
 		eleInfo.appendChild(eleYears);
 		//eleInfo.appendChild(eleMisc);
+		eleInfo.appendChild(eleMarriages);
 		
 		if(person.children.length > 0 && person != tree.rootPerson) {
 			var eleCollapse = document.createElement('button');
@@ -237,6 +332,7 @@ function newTree(treeIndex) {
 		familyIndex: treeIndex, //give a unique index to each family/tree
 		nextNameIndex: 1, //give a unique index to each member of the family
 		rootPerson: null, //first person in the family, as far as this tree goes
+		flattenedPeople: [], //flat array of all people in the tree
 		getName: function() {
 			return this.familyCharacter + this.familyIndex;
 		},
@@ -247,6 +343,7 @@ function newTree(treeIndex) {
 	const r = Math.floor(Math.random()*20);
 	tree.rootPerson = newPerson(1, tree.getName(), r + yearStart);
 	personGenerateChildren(tree.rootPerson, tree.rootPerson.personIndex + 1);
+	tree.flattenedPeople = tree.rootPerson.getFlattenedPeople();
 	return tree;
 }
 
@@ -256,14 +353,54 @@ function newPerson(personIndex, familyName, birthYear) {
 		personIndex: personIndex, //give a unique index to each member within a family
 		familyName: familyName, //unique last name of family/tree
 		gender: getRandomGender(),
-		children: [],
 		birthYear: birthYear,
 		deathAge: getRandomDeathAge(),
+		children: [],
+		spouses: [], //just their names
 		getFirstName: function() {
 			return this.personCharacter + this.personIndex;
 		},
 		getName: function() {
 			return this.getFirstName() + ' ' + this.familyName;
+		},
+		isEndNode: function() {
+			return this.birthYear > yearEnd;
+		},
+		getFlattenedPeople: function() {
+			var flattened = [this];
+			for(var child of this.children) {
+				flattened.push(...child.getFlattenedPeople());
+			}
+			return flattened;
+		},
+		couldGetMarried: function(otherPerson, lookingForGenders) {
+			//can't marry yourself
+			if(this.getName() == otherPerson.getName()) {
+				return false;
+			}
+			//endNodes don't marry
+			if(this.isEndNode() || otherPerson.isEndNode()) {
+				return false;
+			}
+			//is the gender ok?
+			if(!lookingForGenders.includes(otherPerson.gender)) {
+				return false;
+			}
+			//verify your adult+living years overlap theirs
+			if(this.birthYear + this.deathAge - minimumAgeToHaveChildren < otherPerson.birthYear) {
+				return false;
+			}
+			if(otherPerson.birthYear + otherPerson.deathAge - minimumAgeToHaveChildren < this.birthYear) {
+				return false;
+			}
+			//verify your not too closely related
+			if(personsAreTooCloselyRelatedToMarry(this, otherPerson)) {
+				return false;
+			}
+			//LEAVING OUT any consideration of children's ages for now
+			
+			//no blockers found
+			return true;
 		},
 		countGenerations: function() {
 			var generations = 0;
@@ -285,7 +422,7 @@ function newPerson(personIndex, familyName, birthYear) {
 function personGenerateChildren(person, personIndex) {
 	var childCount = getRandomChildCount();
 	var age = getRandomStartedHavingChildrenAge();
-	if(person.deathAge < age || person.birthYear > yearEnd) {
+	if(person.deathAge < age || person.isEndNode()) {
 		childCount = 0;
 	}
 	person.children = [];
@@ -301,6 +438,51 @@ function personGenerateChildren(person, personIndex) {
 		}
 	}
 	return personIndex;
+}
+
+//CAVEAT I'm only checking for relationships within one tree, not complicated ones through marriage that change as marriages are added
+function personsAreTooCloselyRelatedToMarry(personA, personB) {
+	if(personA.familyName != personB.familyName)
+		return false;
+	for(var tree of trees) {
+		if(tree.familyName != personA.familyName)
+			continue;
+		var separation = getMinSeparation(tree.rootPerson, personA, personB);
+		if(separation == null)
+			return false;
+		return (separation > minSeparationForMarriage);
+	}
+	return false;
+	
+	//returns minimum number of generations from this person (or a descendant of them) to both further-descendants (A and B)
+	//returns NULL for no connection found
+	function getMinSeparation(person, descendantA, descendantB) {
+		var separationA = getSeparation(person, descendantA);
+		var separationB = getSeparation(person, descendantB);
+		var minSeparation = Math.min(separationA, separationB);
+		if(separationA == 0 || separationB == 0)
+			return null; //person is not an ancestor of both A and B
+		for(var child of person.children) {
+			var separationFromChild = getSeparation(child, descendantA, descendantB);
+			if(separationFromChild == 0)
+				continue;
+			if(separationFromChild < minSeparation)
+				return separationFromChild;
+		}
+		return minSeparation;
+	}
+	
+	//returns number of generations between person and descendant
+	function getSeparation(person, descendant) {
+		for(var child of person.children) {
+			if(child.getName() == descendant.getName())
+				return 1;
+			var separationFromChild = getSeparation(child, descendant);
+			if(separationFromChild > 0)
+				return separationFromChild + 1;
+		}
+		return 0;
+	}
 }
 
 function downloadCurrentTreeAsHTML() {
